@@ -1,0 +1,914 @@
+<!doctype html>
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this
+   - file, You can obtain one at https://mozilla.org/MPL/2.0/.
+   - Copyright (c) 2026 Greg O'Beirne -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>World Museum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#e9eee8; --panel:#f7f9f5; --ink:#1d2822; --muted:#5b6a61; --line:#c9d3cb;
+  --oak:#b98538; --oak-deep:#7a5420; --void:#d7ddd5;
+  --heat:#ff4d2e; --m-sign:#e2b93b; --m-store:#8f5f33; --m-red:#cf3f35; --m-mob:#d9619f; --m-build:#4f8fae;
+  --display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --paper:#121815; --panel:#1a221e; --ink:#e3eae4; --muted:#93a399; --line:#2d3833; --void:#0d1210; --oak:#d19a48; --oak-deep:#f0c27a; }
+}
+:root[data-theme="dark"]{ --paper:#121815; --panel:#1a221e; --ink:#e3eae4; --muted:#93a399; --line:#2d3833; --void:#0d1210; --oak:#d19a48; --oak-deep:#f0c27a; }
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html,body{height:100%;margin:0}
+body{background:var(--paper);color:var(--ink);font:16px/1.45 var(--body);overflow:hidden;-webkit-tap-highlight-color:transparent}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--oak);outline-offset:2px}
+
+#map{position:fixed;inset:0;touch-action:none;background:var(--void);display:block;width:100%;height:100%}
+
+/* top bar */
+.bar{position:fixed;left:12px;top:calc(12px + env(safe-area-inset-top,0px));display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:calc(100% - 24px);z-index:5}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 10px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 0 var(--line)}
+.chip select{border:0;background:transparent;font-family:var(--display);font-weight:700;font-size:17px;max-width:52vw}
+.seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 2px 0 var(--line)}
+.seg button{border:0;background:transparent;padding:7px 11px;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.seg button:disabled{opacity:.35;cursor:default}
+.iconbtn{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:7px 11px;font-size:14px;box-shadow:0 2px 0 var(--line)}
+
+/* readout */
+#readout{position:fixed;left:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:5px 9px;font-size:13px;color:var(--muted);z-index:4;font-variant-numeric:tabular-nums;pointer-events:none}
+
+/* side panel / sheet */
+.panel{position:fixed;z-index:6;background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;
+  right:12px;top:calc(12px + env(safe-area-inset-top,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));width:360px;border-radius:16px;box-shadow:0 3px 0 var(--line)}
+.tabs{display:flex;gap:2px;padding:10px 10px 0}
+.tabs button{flex:1;border:0;background:transparent;padding:8px 6px;border-radius:10px 10px 0 0;font-family:var(--display);font-weight:500;font-size:15px;color:var(--muted);border-bottom:2px solid transparent}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--oak)}
+.pane{overflow:auto;flex:1;padding:6px 14px 16px;border-top:1px solid var(--line)}
+.pane[hidden]{display:none}
+.hint{color:var(--muted);font-size:14px;margin:10px 0}
+.pin{width:34px;height:28px;border-radius:5px;background:var(--oak);color:#fff8ea;display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:15px;position:relative;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)}
+.pin::after{content:"";position:absolute;left:15px;top:28px;width:4px;height:8px;background:var(--oak-deep)}
+.ptitle{font-family:var(--display);font-weight:700;font-size:16px;line-height:1.25}
+.pmeta{font-size:13px;color:var(--muted);margin-top:2px}
+.pquote{font-size:13px;margin-top:4px;color:var(--ink);opacity:.85}
+.search{width:100%;margin:10px 0 4px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+.sign{display:block;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid var(--line);padding:10px 2px}
+.sign b{font-weight:700}
+.sign span{display:block;font-size:12px;color:var(--muted)}
+dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:14px;margin:12px 0}
+dt{color:var(--muted)} dd{margin:0;overflow-wrap:anywhere}
+h2{font-family:var(--display);font-weight:700;font-size:20px;margin:14px 0 4px}
+h3{font-family:var(--display);font-weight:500;font-size:16px;margin:16px 0 6px}
+.legend{display:grid;gap:6px;font-size:14px}
+.legend label{display:flex;align-items:center;gap:8px}
+.dot{width:12px;height:12px;border-radius:50%;display:inline-block;border:2px solid rgba(0,0,0,.25)}
+.dot.hollow{background:transparent!important;border-width:3px}
+
+/* step 2: places with keep buttons, exhibits */
+.place{display:flex;align-items:stretch;gap:6px;border-bottom:1px solid var(--line)}
+.place.on{background:color-mix(in srgb,var(--oak) 16%,transparent)}
+.pfly{flex:1;display:grid;grid-template-columns:38px 1fr;gap:10px;align-items:start;text-align:left;background:transparent;border:0;padding:12px 2px}
+.keep{align-self:center;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:6px 12px;font-size:14px;white-space:nowrap}
+.keep[aria-pressed="true"]{background:var(--oak);border-color:var(--oak);color:#fffaf0;font-weight:700}
+.iconbtn:disabled{opacity:.4;cursor:default;box-shadow:none}
+#toast{display:flex;align-items:center;gap:4px;justify-content:center;width:max-content}
+#toast button{margin-left:10px;flex:none;border:0;border-radius:8px;padding:3px 10px;background:var(--oak);color:#fffaf0;font-weight:700}
+.iconbtn[aria-pressed="true"]{background:var(--oak);border-color:var(--oak);color:#fffaf0;font-weight:700}
+.ex{border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin:10px 0;background:var(--paper)}
+.ex.on{border-color:var(--oak);box-shadow:0 0 0 2px color-mix(in srgb,var(--oak) 35%,transparent)}
+.exname{width:100%;border:0;border-bottom:1px dashed var(--line);background:transparent;font-family:var(--display);font-weight:700;font-size:17px;padding:2px 0 4px}
+.exname:focus{outline:none;border-bottom-color:var(--oak)}
+.rng{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:14px;margin:10px 0 4px;align-items:center}
+.rng input{grid-column:1/-1;width:100%;accent-color:var(--oak)}
+.rng output{font-variant-numeric:tabular-nums;color:var(--muted)}
+.exbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.exbtns button{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:6px 10px;font-size:14px}
+.exbtns button:disabled{opacity:.4;cursor:default}
+.exbtns .danger{color:var(--m-red)}
+.warn{font-size:13px;margin-top:8px;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--m-sign) 22%,transparent)}
+.warn button{margin-left:6px;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:3px 8px;font-size:13px}
+.total{font-family:var(--display);font-weight:500;font-size:16px;margin:12px 0 4px}
+.settings{border-bottom:1px solid var(--line);padding-bottom:10px}
+.check{display:flex;gap:8px;align-items:center;font-size:14px;margin-top:8px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(64px + env(safe-area-inset-top,0px));z-index:7;background:var(--ink);color:var(--panel);border-radius:12px;padding:8px 14px;font-size:14px;max-width:calc(100% - 24px);text-align:center}
+#toast[hidden]{display:none}
+@media (max-width:760px){#toast{top:calc(118px + env(safe-area-inset-top,0px))}}
+
+body.nosigns .tabs [data-tab=signs], body.nosigns #mnav [data-tab=signs]{display:none!important}
+/* museum mode */
+body:not(.museum) .museum-only, body:not(.museum) #pane-museum{display:none}
+body.museum .worlds-only, body.museum #worldChip, body.museum .tabs, body.museum .pane:not(#pane-museum){display:none}
+body.museum #pane-museum{display:block}
+#pane-museum .primary{font-size:16px;padding:10px 16px;background:var(--oak);color:#fffaf0;border:0}
+#pane-museum .primary:disabled{opacity:.45}
+#pane-museum select{appearance:auto}
+
+/* intro */
+#intro{position:fixed;inset:0;display:grid;place-items:center;z-index:10;background:var(--paper);padding:20px;overflow:auto}
+#intro[hidden]{display:none}
+.card{max-width:560px;width:100%}
+.card h1{font-family:var(--display);font-weight:700;font-size:clamp(34px,7vw,52px);line-height:1;margin:0 0 14px;letter-spacing:-.01em}
+.card p{margin:0 0 12px;max-width:62ch}
+.steps{list-style:none;counter-reset:s;padding:0;margin:4px 0 6px;display:flex;flex-wrap:wrap;gap:8px}
+.steps li{counter-increment:s;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:5px 10px 5px 8px;font-size:14px}
+.steps li::before{content:counter(s);display:inline-grid;place-items:center;width:20px;height:20px;border-radius:5px;background:var(--oak);color:#fffaf0;font-family:var(--display);font-weight:700;font-size:12px;margin-right:7px}
+.drop{margin:22px 0 14px;border:2px dashed var(--line);border-radius:18px;padding:22px;display:grid;gap:12px;justify-items:start;background:var(--panel)}
+.drop.over{border-color:var(--oak);background:color-mix(in srgb,var(--oak) 10%,var(--panel))}
+.primary{background:var(--oak);color:#fffaf0;border:0;border-radius:12px;padding:12px 18px;font-family:var(--display);font-weight:700;font-size:17px;box-shadow:inset 0 -3px 0 rgba(0,0,0,.2)}
+.secondary{background:transparent;border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.small{font-size:14px;color:var(--muted)}
+.progress{display:grid;gap:10px;margin-top:8px}
+.prow{font-size:14px}
+.bar-o{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:4px}
+.bar-i{height:100%;background:var(--oak);width:0;transition:width .2s}
+.err{color:var(--m-red);font-size:14px}
+.resume{border:2px solid var(--oak);border-radius:18px;padding:16px 18px;margin:18px 0 6px;background:var(--panel)}
+.resume h2{margin:0 0 4px}
+.resume ul{list-style:none;padding:0;margin:10px 0}
+.resume li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.resume li .meta{grid-column:1;color:var(--muted);font-size:13px}
+.resume li .st{grid-row:1/3;grid-column:2;align-self:center;font-size:13px;font-weight:700}
+.st.ok{color:#3f8a3a} .st.wait{color:var(--muted)} .st.changed{color:var(--oak-deep)}
+.linkbtn{border:0;background:none;padding:0;color:var(--ink);text-decoration:underline;font-size:inherit}
+.sumlist{margin:6px 0 0;padding-left:18px;font-size:14px}
+.verdict{margin-top:6px;padding:8px 10px;border-radius:10px;font-weight:700;font-size:14px}
+.verdict.good{background:color-mix(in srgb,#3f8a3a 18%,transparent)} .verdict.bad{background:color-mix(in srgb,var(--m-red) 20%,transparent)}
+details.report{margin:6px 0;font-size:14px} details.report summary{cursor:pointer;font-weight:700;padding:4px 0}
+.ri{border-left:4px solid var(--line);padding:4px 0 4px 10px;margin:6px 0}
+.ri.error{border-color:var(--m-red)} .ri.warn{border-color:var(--m-sign)} .ri.info{border-color:var(--m-build)}
+.credit{margin-top:28px!important;font-size:12px;color:var(--muted);line-height:1.5}
+.about{font-size:13px;color:var(--muted);line-height:1.5}
+.about p{margin:0 0 8px}
+
+/* popover */
+#pop .exbtns{margin-top:10px} #pop .pquote{font-size:13px;margin-top:4px}
+#pop{position:fixed;z-index:8;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;max-width:280px;font-size:14px;box-shadow:0 3px 0 var(--line)}
+#pop[hidden]{display:none}
+#pop .t{font-family:var(--display);font-weight:700;font-size:16px;margin-bottom:2px}
+
+#mnav{display:none}
+@media (max-width:760px){
+  .bar{gap:6px} .chip select{font-size:16px;max-width:44vw} .seg button,.iconbtn{font-size:13px;padding:6px 8px}
+  #addMore{display:none}
+  .tabs{display:none!important}
+  .panel{left:0;right:0;top:var(--bar-h,112px);bottom:calc(58px + env(safe-area-inset-bottom,0px));width:auto;border-radius:16px 16px 0 0;border-width:1px 0 0;box-shadow:none}
+  .pane{border-top:0;padding-top:4px}
+  body.mtab-map .panel{display:none}
+  body:not(.mtab-map) #readout{display:none}
+  #readout{bottom:calc(68px + env(safe-area-inset-bottom,0px))}
+  #toast{top:auto;bottom:calc(70px + env(safe-area-inset-bottom,0px))}
+  #mnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--panel);border-top:1px solid var(--line);padding:2px 2px env(safe-area-inset-bottom,0px)}
+  #mnav[hidden]{display:none}
+  #mnav button{flex:1;border:0;background:transparent;display:grid;justify-items:center;gap:1px;padding:7px 0 6px;font-size:11px;color:var(--muted);position:relative;font-family:var(--body)}
+  #mnav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  #mnav button[aria-selected="true"]{color:var(--ink);font-weight:700}
+  #mnav button[aria-selected="true"] svg{stroke:var(--oak);stroke-width:2.2}
+  #mnav .badge{position:absolute;top:3px;left:calc(50% + 7px);background:var(--oak);color:#fffaf0;border-radius:9px;font-size:10px;line-height:16px;min-width:16px;padding:0 4px;font-weight:700}
+  #mnav .badge:empty{display:none}
+  body:not(.museum) #mnav .museum-only{display:none}
+  body.museum #mnav .worlds-only{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="map" aria-label="Overhead map of the selected world"></canvas>
+
+<div class="bar" id="bar" hidden>
+  <div class="chip" id="worldChip"><select id="worldSel" aria-label="World"></select></div>
+  <div class="chip museum-only"><b style="font-family:var(--display);font-size:17px">Museum</b></div>
+  <button class="iconbtn museum-only" id="backBtn">Back to worlds</button>
+  <button class="iconbtn museum-only" id="eraseBtn" aria-pressed="false">Erase area</button>
+  <button class="iconbtn museum-only" id="mUndoBtn" disabled>Undo</button>
+  <div class="seg" role="group" aria-label="Dimension">
+    <button data-dim="0">Overworld</button><button data-dim="1">Nether</button><button data-dim="2">End</button>
+  </div>
+  <button class="iconbtn worlds-only" id="drawBtn" aria-pressed="false">Draw area</button>
+  <button class="iconbtn worlds-only" id="undoBtn" disabled>Undo</button>
+  <button class="iconbtn worlds-only" id="addMore">Add worlds</button>
+  <button class="iconbtn worlds-only" id="arrangeBtn" style="background:var(--ink);color:var(--panel);border-color:var(--ink)">Arrange museum</button>
+</div>
+
+<aside class="panel" id="panel" hidden>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="exhibits">Kept</button>
+    <button role="tab" aria-selected="false" data-tab="signs">Signs</button>
+    <button role="tab" aria-selected="false" data-tab="world">World</button>
+  </div>
+  <div class="pane" id="pane-exhibits"></div>
+  <div class="pane" id="pane-signs" hidden>
+    <input class="search" id="signSearch" type="search" placeholder="Search sign text" aria-label="Search sign text">
+    <div id="signList"></div>
+  </div>
+  <div class="pane" id="pane-world" hidden></div>
+  <div class="pane" id="pane-museum"></div>
+</aside>
+
+<div id="readout" hidden></div>
+<nav id="mnav" hidden aria-label="Sections">
+  <button data-tab="map" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>Map</button>
+  <button data-tab="exhibits" class="worlds-only" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>Kept<span class="badge" id="b-kept"></span></button>
+  <button data-tab="signs" class="worlds-only" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>Signs</button>
+  <button data-tab="world" class="worlds-only" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>World</button>
+  <button data-tab="museum" class="museum-only" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M3 9 12 4l9 5M5 9v9M9.5 9v9M14.5 9v9M19 9v9M3 20h18"/></svg>Build</button>
+</nav>
+<div id="pop" hidden role="dialog"></div>
+<div id="toast" hidden role="status"></div>
+
+<section id="intro">
+  <div class="card">
+    <h1>Build a museum of your old worlds</h1>
+    <p>Open your Bedrock worlds, choose the places you remember, and get back one new world with each of them as an exhibit, side by side.</p>
+    <ol class="steps"><li><b>Open</b> your worlds</li><li><b>Keep</b> the places you remember</li><li><b>Arrange</b> them in the museum</li><li><b>Build</b> it and play</li></ol>
+    <p class="small">Everything happens in this browser. Your worlds aren’t uploaded anywhere and the originals aren’t changed.</p>
+    <div id="resume"></div>
+    <div class="drop" id="drop">
+      <button class="primary" id="pickZip">Choose world ZIPs</button>
+      <button class="secondary" id="pickDir">Choose a world folder</button>
+      <span class="small">On iPhone: in Files, long-press a world folder, tap Compress, then choose the ZIP here. A ZIP of the whole minecraftWorlds folder works too. On a computer you can drop ZIPs or folders here.</span>
+    </div>
+    <div class="progress" id="progress"></div>
+    <p class="small" style="margin-top:14px"><button class="linkbtn" id="openPlanIntro">Open a plan file</button> to restore a museum plan saved earlier.</p>
+    <p class="credit">Designed by Greg O’Beirne.<br>NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.</p>
+  </div>
+</section>
+<input type="file" id="zipInput" accept=".zip,.mcworld,application/zip" multiple hidden>
+<input type="file" id="dirInput" webkitdirectory multiple hidden>
+<input type="file" id="planInput" accept=".json,application/json" hidden>
+
+<script>
+/*__CORE__*/
+</script>
+<script>
+/*__BUILD__*/
+</script>
+<script>
+(() => {
+'use strict';
+const C = MuseumCore;
+const $ = s => document.querySelector(s);
+const state = { worlds: [], w: 0, dim: 0, view: { x: 0, z: 0, s: 0.5 }, selPlace: -1, show: { heat: true, sign: true, storage: true, redstone: true, mob: true, build: true } };
+const KIND_ALL = { sign: ['Signs', '--m-sign'], storage: ['Storage', '--m-store'], redstone: ['Redstone', '--m-red'], mob: ['Named or tamed mobs', '--m-mob'], build: ['Other placed blocks', '--m-build'] };
+const KIND = KIND_ALL;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const r0 = n => Math.round(n);
+
+if (typeof DecompressionStream === 'undefined') {
+  $('#progress').innerHTML = '<p class="err">This browser can’t unpack world files. Use a current version of Safari, Chrome, Edge or Firefox.</p>';
+}
+
+// ---------- loading
+async function loadSources(sources) {
+  const prog = $('#progress');
+  $('#intro').hidden = false;
+  for (const src of sources) {
+    const row = document.createElement('div'); row.className = 'prow';
+    row.innerHTML = `<div>${esc(src.label)}</div><div class="bar-o"><div class="bar-i"></div></div>`;
+    prog.appendChild(row);
+    const fill = row.querySelector('.bar-i');
+    try {
+      const fs = src.zip ? await C.openZip(src.zip) : C.openFileList(src.files);
+      const found = C.findWorlds(fs, src.label);
+      if (!found.length) throw new Error('No Minecraft world found inside. A world folder contains level.dat and a db folder.');
+      for (let i = 0; i < found.length; i++) {
+        const res = await C.scanWorld(found[i], f => { fill.style.width = (100 * (i + f) / found.length).toFixed(1) + '%'; });
+        res.zipName = src.label; res.zipSize = src.zip ? src.zip.size : (src.files || []).reduce((n, f) => n + f.size, 0);
+        finishWorld(res); loadPlan(res);
+        state.worlds.push(res);
+      }
+      fill.style.width = '100%';
+      row.firstElementChild.textContent = `${src.label}: ${found.length === 1 ? 'opened' : found.length + ' worlds opened'}`;
+    } catch (e) {
+      console.error(e);
+      row.innerHTML = `<div class="err">${esc(src.label)}: ${esc(e.message || e)}</div>`;
+    }
+  }
+  if (!state.worlds.length) return;
+  if (resume) {
+    const s = readSession();
+    const missing = s.worlds.filter(w => !state.worlds.some(W => worldId(W) === w.id));
+    if (missing.length) { prog.innerHTML = ''; renderResume(); return; }
+    finishResume(); return;
+  }
+  rememberWorlds(); autoBackdrop();
+  setTimeout(() => { $('#intro').hidden = true; prog.innerHTML = ''; }, 500);
+  if (state.museum) { $('#intro').hidden = true; layout(false); renderMuseum(); draw(); }
+  else showApp();
+}
+
+// ---------- coming back: which worlds were open, and where you were
+const SESSION_KEY = 'wm:session';
+function readSession() { try { const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); return s && Array.isArray(s.worlds) ? s : { worlds: [], view: null }; } catch (e) { return { worlds: [], view: null }; } }
+function writeSession(s) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch (e) {} }
+function rememberWorlds() {
+  const s = readSession();
+  for (const W of state.worlds) {
+    const e = { id: worldId(W), name: W.name, folderId: W.folderId, zip: W.zipName, size: W.zipSize, fp: W.fp };
+    const i = s.worlds.findIndex(x => x.id === e.id); if (i >= 0) s.worlds[i] = e; else s.worlds.push(e);
+  }
+  writeSession(s);
+}
+let viewTimer = 0;
+function saveView() {
+  clearTimeout(viewTimer);
+  viewTimer = setTimeout(() => {
+    const W = state.worlds[state.w]; if (!W || resume) return;
+    const s = readSession();
+    const t = [...tabs].find(x => x.getAttribute('aria-selected') === 'true');
+    s.view = { museum: !!state.museum, w: worldId(W), dim: state.dim, mdim: state.mdim, tab: isMobile() ? state.mtab : (t ? t.dataset.tab : 'exhibits') };
+    writeSession(s);
+  }, 250);
+}
+function restoreView(v) {
+  if (!v) return;
+  const i = state.worlds.findIndex(W => worldId(W) === v.w);
+  if (i >= 0 && i !== state.w) { $('#worldSel').value = i; selectWorld(i); }
+  if (state.worlds[state.w].dims[v.dim] && v.dim !== state.dim) selectDim(v.dim, true);
+  if (v.museum) {
+    enterMuseum();
+    if (state.museum && groups.some(g => g.dim === v.mdim) && v.mdim !== state.mdim) { state.mdim = v.mdim; syncMuseumBar(); fitMuseum(); draw(); }
+    if (isMobile() && v.tab === 'museum') setMTab('museum');
+  } else if (v.tab && v.tab !== 'map' && v.tab !== 'museum') openTab(v.tab);
+}
+let resume = null;
+const fmtSize = n => !n ? '' : n < 1e6 ? Math.round(n / 1e3) + ' KB' : (n / 1e6).toFixed(n < 1e7 ? 1 : 0) + ' MB';
+function renderResume() {
+  const box = $('#resume'); const s = readSession();
+  if (!resume || !s.worlds.length) { box.innerHTML = ''; return; }
+  const loaded = new Map(state.worlds.map(W => [worldId(W), W]));
+  const n = s.worlds.filter(w => loaded.has(w.id)).length;
+  box.innerHTML = `<div class="resume"><h2>Continue your museum</h2>
+    <p class="small" style="margin:0">Choose the same ZIPs again and everything comes back as you left it. Pick them all at once if you like. Renamed ZIPs still match.</p>
+    <ul>${s.worlds.map(w => { const W = loaded.get(w.id); const changed = W && w.fp && W.fp !== w.fp;
+      return `<li><b>${esc(w.name)}</b><span class="st ${W ? (changed ? 'changed' : 'ok') : 'wait'}">${W ? (changed ? 'Played since' : 'Ready') : 'Waiting'}</span><span class="meta">${esc(w.zip || '')}${w.size ? ', ' + fmtSize(w.size) : ''}${changed ? '. It’s been played since your plan; your choices still apply.' : ''}</span></li>`; }).join('')}</ul>
+    <div class="exbtns"><button class="primary" id="resumePick">${n ? 'Choose the rest' : 'Choose these ZIPs'}</button>${n ? `<button id="resumeGo">Continue with ${n} of ${s.worlds.length}</button>` : ''}<button id="resumeNew">Start a new museum</button></div></div>`;
+  $('#resumePick').onclick = () => $('#zipInput').click();
+  if ($('#resumeGo')) $('#resumeGo').onclick = finishResume;
+  $('#resumeNew').onclick = () => {
+    if (!confirm('Start a new museum? Your saved plans stay in this browser, but this list of worlds is cleared.')) return;
+    writeSession({ worlds: [], view: null }); resume = null; renderResume();
+    if (state.worlds.length) { rememberWorlds(); $('#intro').hidden = true; showApp(); }
+  };
+}
+function finishResume() {
+  const s = readSession(); resume = null;
+  const changed = state.worlds.filter(W => { const e = s.worlds.find(w => w.id === worldId(W)); return e && e.fp && W.fp !== e.fp; });
+  rememberWorlds(); autoBackdrop(); renderResume();
+  $('#intro').hidden = true; $('#progress').innerHTML = '';
+  showApp(); restoreView(s.view);
+  if (changed.length) toast(`${changed.map(W => W.name).join(', ')} ${changed.length === 1 ? 'has' : 'have'} been played since your plan. Your choices still apply.`, 5000);
+}
+function waitingWorlds() { // missing worlds that have exhibits saved
+  return readSession().worlds.filter(w => !state.worlds.some(W => worldId(W) === w.id)).filter(w => {
+    try { const p = JSON.parse(localStorage.getItem('wm:plan2:' + w.id) || 'null'); return p && p.exhibits && p.exhibits.length; } catch (e) { return false; }
+  });
+}
+
+// ---------- plan files: every choice, without the worlds
+function savePlanFile() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('wm:')) data[k] = localStorage.getItem(k); }
+  const W = state.worlds[state.w]; if (W) saveView();
+  const file = { format: 'world-museum-plan', version: 1, saved: new Date().toISOString(), data };
+  saveBlob(new Blob([JSON.stringify(file, null, 1)], { type: 'application/json' }), (state.mset.name || 'World Museum') + ' plan', 'json');
+}
+async function openPlanFile(f) {
+  let file;
+  try { file = JSON.parse(await f.text()); } catch (e) { toast('That file isn’t a museum plan.', 3000); return; }
+  if (!file || file.format !== 'world-museum-plan' || typeof file.data !== 'object') { toast('That file isn’t a museum plan.', 3000); return; }
+  if (!confirm('Replace your current plan with the one in this file?')) return;
+  const old = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('wm:')) old.push(k); }
+  try { for (const k of old) localStorage.removeItem(k); for (const [k, v] of Object.entries(file.data)) if (k.startsWith('wm:') && typeof v === 'string') localStorage.setItem(k, v); }
+  catch (e) { toast('This browser couldn’t store the plan.', 3000); return; }
+  applyStoredState();
+  toast('Plan opened.', 2500);
+}
+$('#planInput').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) openPlanFile(f); };
+$('#openPlanIntro').onclick = () => $('#planInput').click();
+function applyStoredState() {
+  try { state.settings = { ...SETTINGS_DEFAULTS, ...JSON.parse(localStorage.getItem('wm:settings') || '{}') }; } catch (e) { state.settings = { ...SETTINGS_DEFAULTS }; }
+  try { state.mset = { ...MSET_DEFAULTS, ...JSON.parse(localStorage.getItem('wm:museum') || '{}') }; } catch (e) { state.mset = { ...MSET_DEFAULTS }; }
+  try { arrange = JSON.parse(localStorage.getItem('wm:arrange2') || '{}'); } catch (e) { arrange = {}; }
+  histories.clear(); hubCache = null; state.built = null;
+  for (const W of state.worlds) loadPlan(W);
+  if (!state.worlds.length || waitingWorlds().length) { resume = readSession().worlds.length ? {} : null; $('#intro').hidden = false; renderResume(); return; }
+  applySigns();
+  if (state.museum) { layout(false); renderMuseum(); } else { renderExhibits(); renderWorldPane(); renderPlaces(); }
+  updateUndo(); draw();
+}
+function finishWorld(W) {
+  W.regions = {}; W.tiles = new Map(); W.overview = {}; W.heat = {};
+  for (const d of Object.keys(W.dims)) {
+    const D = W.dims[d]; const reg = new Map();
+    for (const c of D.chunks) { const k = (c.x >> 5) + ',' + (c.z >> 5); if (!reg.has(k)) reg.set(k, []); reg.get(k).push(c); }
+    W.regions[d] = reg;
+  }
+  for (const m of W.markers) {
+    const D = W.dims[m.dim]; if (!D) continue;
+    const bx = Math.floor(m.x), bz = Math.floor(m.z);
+    const c = D.index.get((bx >> 4) + ',' + (bz >> 4));
+    if (c && c.h && m.dim === 0) { const top = c.h[(bz & 15) * 16 + (bx & 15)]; m.under = m.y < top - 3; }
+  }
+  // number places consistently
+  for (const d of Object.keys(W.places)) W.places[d].forEach((p, i) => { p.rank = i + 1; });
+}
+function fromPicker(files) {
+  const zips = [], loose = [];
+  for (const f of files) (/\.(zip|mcworld)$/i.test(f.name) && !f.webkitRelativePath ? zips : loose).push(f);
+  const sources = zips.map(z => ({ label: z.name, zip: z }));
+  if (loose.length) {
+    const top = (loose[0].webkitRelativePath || loose[0].name).split('/')[0];
+    sources.push({ label: top || 'Folder', files: loose });
+  }
+  return sources;
+}
+$('#pickZip').onclick = () => $('#zipInput').click();
+$('#pickDir').onclick = () => $('#dirInput').click();
+$('#addMore').onclick = () => $('#zipInput').click();
+$('#zipInput').onchange = e => { const s = fromPicker(e.target.files); e.target.value = ''; loadSources(s); };
+$('#dirInput').onchange = e => { const s = fromPicker(e.target.files); e.target.value = ''; loadSources(s); };
+const drop = $('#drop');
+['dragenter', 'dragover'].forEach(t => document.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(t => document.addEventListener(t, e => { e.preventDefault(); if (t === 'dragleave' && e.relatedTarget) return; drop.classList.remove('over'); }));
+document.addEventListener('drop', async e => {
+  const items = [...(e.dataTransfer.items || [])].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+  const sources = [];
+  for (const it of items) {
+    if (it.isFile) { const f = await new Promise((res, rej) => it.file(res, rej)); if (/\.(zip|mcworld)$/i.test(f.name)) sources.push({ label: f.name, zip: f }); }
+    else if (it.isDirectory) { const files = []; await walk(it, it.name, files); sources.push({ label: it.name, files }); }
+  }
+  if (sources.length) loadSources(sources);
+});
+async function walk(dir, path, out) {
+  const reader = dir.createReader();
+  for (;;) {
+    const batch = await new Promise((res, rej) => reader.readEntries(res, rej));
+    if (!batch.length) break;
+    for (const en of batch) {
+      if (en.isFile) { const f = await new Promise((res, rej) => en.file(res, rej)); Object.defineProperty(f, 'webkitRelativePath', { value: path + '/' + en.name }); out.push(f); }
+      else await walk(en, path + '/' + en.name, out);
+    }
+  }
+}
+
+// ---------- app shell
+function showApp() {
+  $('#bar').hidden = false; $('#panel').hidden = false; $('#readout').hidden = false; $('#mnav').hidden = false; applySigns();
+  setMTab(isMobile() ? 'map' : 'exhibits');
+  const sel = $('#worldSel');
+  sel.innerHTML = state.worlds.map((W, i) => `<option value="${i}">${esc(W.name)}</option>`).join('');
+  sel.value = state.w;
+  selectWorld(state.w);
+}
+$('#worldSel').onchange = e => selectWorld(+e.target.value);
+function selectWorld(i) {
+  state.w = i; const W = state.worlds[i]; setTimeout(updateUndo, 0); saveView();
+  const best = W.dims[0] ? 0 : +Object.keys(W.dims)[0];
+  selectDim(best, true);
+  renderWorldPane(); renderSigns(); renderExhibits();
+}
+document.querySelectorAll('.seg button').forEach(b => b.onclick = () => selectDim(+b.dataset.dim, true));
+function selectDim(d, frame) {
+  const W = state.worlds[state.w]; if (!W.dims[d]) return;
+  state.dim = d; state.selPlace = -1; hidePop();
+  document.querySelectorAll('.seg button').forEach(b => { const dd = +b.dataset.dim; b.disabled = !W.dims[dd]; b.setAttribute('aria-pressed', dd === d); });
+  if (frame) fitDim();
+  renderPlaces(); updateBadges(); draw(); saveView();
+  const r = mapRect(); requestAnimationFrame(() => readout(r.w / 2, r.h / 2));
+}
+function fitDim() {
+  const W = state.worlds[state.w]; const D = W.dims[state.dim];
+  const places = W.places[state.dim];
+  let minX = D.minX * 16, maxX = D.maxX * 16 + 16, minZ = D.minZ * 16, maxZ = D.maxZ * 16 + 16;
+  if (places.length) { // frame the places rather than kilometres of far exploration
+    const ps = places.slice(0, 8);
+    minX = Math.min(...ps.map(p => p.minX * 16)) - 160; maxX = Math.max(...ps.map(p => p.maxX * 16 + 16)) + 160;
+    minZ = Math.min(...ps.map(p => p.minZ * 16)) - 160; maxZ = Math.max(...ps.map(p => p.maxZ * 16 + 16)) + 160;
+  }
+  const r = mapRect();
+  state.view.x = (minX + maxX) / 2; state.view.z = (minZ + maxZ) / 2;
+  state.view.s = Math.max(0.02, Math.min(4, Math.min(r.w / (maxX - minX), r.h / (maxZ - minZ)) * 0.9));
+  const off = panelOffset(); state.view.x += off.x / state.view.s; state.view.z += off.z / state.view.s;
+}
+const isMobile = () => matchMedia('(max-width:760px)').matches;
+// Signs are hidden unless switched on in the World tab.
+const showSigns = () => !!(state.settings && state.settings.showSigns);
+const showPins = () => !!(state.settings && state.settings.showPins);
+function placeTitle(p) { return showSigns() ? (p.signs[0] || p.names[0] || `Build ${p.rank}`) : `Build ${p.rank}`; }
+function applySigns() {
+  document.body.classList.toggle('nosigns', !showSigns());
+  if (!showSigns()) { if (!$('#pane-signs').hidden) showPane('exhibits'); if (state.mtab === 'signs') setMTab(isMobile() ? 'map' : 'exhibits'); }
+}
+function panelOffset() { // keep the framed area clear of the side panel (phones show one or the other)
+  if (isMobile()) return { x: 0, z: 0 };
+  const p = $('#panel').getBoundingClientRect();
+  return { x: (p.width + 12) / 2, z: 0 };
+}
+const tabs = document.querySelectorAll('.tabs button');
+function showPane(name) {
+  setTimeout(saveView, 0);
+  tabs.forEach(u => u.setAttribute('aria-selected', u.dataset.tab === name));
+  for (const n of ['exhibits', 'signs', 'world']) $('#pane-' + n).hidden = n !== name;
+}
+// Phones: a bottom tab bar switches between the full-screen map and full-screen lists.
+state.mtab = 'map';
+function setMTab(name) {
+  state.mtab = name; setTimeout(saveView, 0);
+  document.body.classList.toggle('mtab-map', name === 'map');
+  document.querySelectorAll('#mnav button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === name));
+  if (name === 'map') { resize(); } else if (name !== 'museum') showPane(name);
+}
+function openTab(name) { showPane(name); if (isMobile()) setMTab(name); }
+function toMap() { if (isMobile() && state.mtab !== 'map') setMTab('map'); }
+tabs.forEach(t => t.onclick = () => showPane(t.dataset.tab));
+document.querySelectorAll('#mnav button').forEach(b => b.onclick = () => setMTab(b.dataset.tab));
+function updateBadges() {
+  const W = state.worlds[state.w]; if (!W) return;
+  const kept = state.worlds.reduce((n, X) => n + (X.exhibits || []).length, 0);
+  $('#b-kept').textContent = kept || '';
+}
+new ResizeObserver(() => { const b = $('#bar').getBoundingClientRect(); if (b.height) document.documentElement.style.setProperty('--bar-h', (b.bottom + 8) + 'px'); }).observe($('#bar'));
+
+// Likely builds live on the map as numbered pins; tapping one opens a card with a Keep button.
+function renderPlaces() {
+  updateBadges();
+  if (state.selPlace >= 0 && !$('#pop').hidden && $('#pop').dataset.place !== undefined) showPlaceCard(state.selPlace);
+}
+function placeSummary(p) {
+  const bits = [];
+  if (p.buildChunks) bits.push(`built blocks in ${p.buildChunks} chunk${p.buildChunks > 1 ? 's' : ''}`);
+  if (p.counts.signs) bits.push(`${p.counts.signs} sign${p.counts.signs > 1 ? 's' : ''}`);
+  if (p.counts.storage) bits.push(`${p.counts.storage} storage`);
+  if (p.counts.mobs) bits.push(`${p.counts.mobs} named mob${p.counts.mobs > 1 ? 's' : ''}`);
+  const w = (p.maxX - p.minX + 1) * 16, h = (p.maxZ - p.minZ + 1) * 16;
+  const depth = p.minY !== null && p.minY < 40 ? `, reaching down to Y ${p.minY}` : '';
+  return `About ${w}×${h} blocks${depth}. ${bits.join(', ').replace(/^./, c => c.toUpperCase())}${bits.length ? '.' : ''}`;
+}
+function showPlaceCard(i, sx, sy) {
+  const W = state.worlds[state.w]; const p = (W.places[state.dim] || [])[i]; if (!p) return;
+  state.selPlace = i; draw();
+  const kept = keptBy(W, state.dim, p);
+  const pop = $('#pop');
+  pop.dataset.place = i;
+  pop.innerHTML = `<div class="t">${esc(placeTitle(p))}</div>
+    <div>${esc(placeSummary(p))}</div>
+    ${showSigns() ? p.signs.slice(1, 3).map(s => `<div class="pquote">“${esc(s)}”</div>`).join('') : ''}
+    ${p.structure ? '<div class="pquote" style="color:var(--muted)">May include a village or other generated structure.</div>' : ''}
+    <div class="exbtns">${kept
+      ? `<button class="keep" aria-pressed="true" data-open>Kept as “${esc(kept.name)}”</button>`
+      : `<button class="keep" aria-pressed="false" data-keep>Keep</button>`}<button data-zoom>Zoom in</button></div>`;
+  pop.hidden = false;
+  if (sx === undefined) { const r = mapRect(); [sx, sy] = toScreen(p.cx, p.cz); if (sx < 0 || sx > r.w || sy < 0 || sy > r.h) { sx = r.w / 2; sy = r.h / 2; } sy -= 34; }
+  placePop(sx, sy);
+  const k = pop.querySelector('[data-keep]'); if (k) k.onclick = () => { keepPlace(i); showPlaceCard(i, sx, sy); };
+  const o = pop.querySelector('[data-open]'); if (o) o.onclick = () => { hidePop(); openTab('exhibits'); };
+  pop.querySelector('[data-zoom]').onclick = () => { hidePop(); focusPlace(i); };
+}
+function placePop(sx, sy) {
+  const pop = $('#pop'); const pw = pop.offsetWidth, ph = pop.offsetHeight;
+  pop.style.left = Math.max(8, Math.min(window.innerWidth - pw - 8, sx - pw / 2)) + 'px';
+  pop.style.top = Math.max(8, Math.min(window.innerHeight - ph - 8, sy - ph - 16)) + 'px';
+}
+function focusPlace(i) {
+  const W = state.worlds[state.w]; const p = W.places[state.dim][i];
+  state.selPlace = i; toMap();
+  const span = Math.max((p.maxX - p.minX + 1) * 16, (p.maxZ - p.minZ + 1) * 16) + 96;
+  const r = mapRect();
+  flyTo(p.cx, p.cz, Math.max(0.6, Math.min(6, Math.min(r.w, r.h) * 0.7 / span)));
+}
+window.__wm = { keepPlace: i => keepPlace(i), pin: i => { const p = state.worlds[state.w].places[state.dim][i]; return toScreen(p.cx, p.cz); } }; // used by automated tests
+function renderSigns() {
+  const W = state.worlds[state.w]; const q = $('#signSearch').value.trim().toLowerCase();
+  const DN = ['Overworld', 'Nether', 'End'];
+  const signs = W.markers.filter(m => m.kind === 'sign' && m.text && (!q || m.text.toLowerCase().includes(q)));
+  $('#signList').innerHTML = signs.length ? signs.slice(0, 600).map((m, i) =>
+    `<button class="sign" data-i="${W.markers.indexOf(m)}"><b>${esc(m.text)}</b><span>${DN[m.dim]}, X ${m.x} Y ${m.y} Z ${m.z}${m.under ? ', underground' : ''}</span></button>`).join('')
+    : `<p class="hint">${q ? 'No sign text matches that search.' : 'This world has no signs with text.'}</p>`;
+  $('#signList').querySelectorAll('.sign').forEach(b => b.onclick = () => {
+    const m = W.markers[+b.dataset.i];
+    if (m.dim !== state.dim) selectDim(m.dim, false);
+    toMap(); flyTo(m.x, m.z, Math.max(state.view.s, 3)); showPop(m);
+  });
+}
+$('#signSearch').oninput = renderSigns;
+function renderWorldPane() {
+  const W = state.worlds[state.w]; const L = W.level; const st = W.stats;
+  const count = d => W.dims[d] ? W.dims[d].chunks.length.toLocaleString() : 'none';
+  const signs = W.markers.filter(m => m.kind === 'sign').length;
+  $('#pane-world').innerHTML = `<h2>${esc(W.name)}</h2>
+  <dl>
+    <dt>Folder</dt><dd>${esc(W.folder)}</dd>
+    <dt>From</dt><dd>${esc(W.source)}</dd>
+    ${L.lastPlayed ? `<dt>Last played</dt><dd>${L.lastPlayed.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</dd>` : ''}
+    ${L.version ? `<dt>Last opened in</dt><dd>${esc(L.version)}</dd>` : ''}
+    ${L.gameMode ? `<dt>Game mode</dt><dd>${esc(L.gameMode)}</dd>` : ''}
+    <dt>Saved chunks</dt><dd>Overworld ${count(0)}, Nether ${count(1)}, End ${count(2)}</dd>
+    <dt>Signs</dt><dd>${signs}</dd>
+    <dt>Chunks with crafted blocks</dt><dd>${Object.values(W.dims).reduce((s, D) => s + D.chunks.filter(c => c.build).length, 0).toLocaleString()}</dd>
+    ${W.player ? `<dt>Player left at</dt><dd>${['Overworld', 'Nether', 'End'][W.player.dim] || ''} X ${r0(W.player.x)}, Y ${r0(W.player.y)}, Z ${r0(W.player.z)}</dd>` : ''}
+  </dl>
+  <div class="exbtns"><button id="addMore2">Add more worlds</button></div>
+  <h3>Backdrop</h3>
+  ${W.museumInfo ? '<p class="small" style="margin:0 0 6px">This is a museum built with this tool.</p>' : ''}
+  <label class="check" style="margin-top:0"><input type="checkbox" id="useBackdrop" ${state.mset.backdrop === worldId(W) ? 'checked' : ''}> Use this world as the museum’s backdrop: carried over as the base world, with its terrain, builds and world-wide data, fixed in place, with new exhibits going on top</label>
+  <h3>Build pins</h3>
+  <label class="check" style="margin-top:0"><input type="checkbox" id="showPins" ${showPins() ? 'checked' : ''}> Show numbered pins on likely builds, which you can tap to keep in one go</label>
+  <h3>Signs</h3>
+  <label class="check" style="margin-top:0"><input type="checkbox" id="showSigns" ${showSigns() ? 'checked' : ''}> Show signs: their markers, the Signs tab, and sign text in pin cards and names</label>
+  <h3>Map key</h3>
+  <div class="legend">
+    <label><input type="checkbox" data-k="heat" ${state.show.heat ? 'checked' : ''}> <span class="dot" style="background:var(--heat);border-radius:2px"></span>Building heat: crafted blocks in a chunk</label>
+    ${Object.entries(KIND).filter(([k]) => k !== 'sign' || showSigns()).map(([k, [label, v]]) => `<label><input type="checkbox" data-k="${k}" ${state.show[k] ? 'checked' : ''}> <span class="dot" style="background:var(${v})"></span>${label}</label>`).join('')}
+    <label><span class="dot hollow" style="border-color:var(--ink)"></span>Hollow markers are underground</label>
+    ${showPins() ? '<label><span class="pin" style="transform:scale(.7);transform-origin:left">1</span>Likely build, ranked by evidence. Tap one to keep it</label>' : ''}
+  </div>
+  <h3>Reading report</h3>
+  <p class="small">${st.tables} table files and ${st.logs} log files read${st.usedManifest ? ' using the database manifest' : ' (no manifest, so every file was read)'}.
+  ${st.badBlocks ? `${st.badBlocks} blocks couldn’t be decoded. ` : ''}${st.badChunks ? `${st.badChunks} chunks had unreadable height data. ` : ''}${st.missingTables ? `${st.missingTables} database files listed in the manifest were missing from the ZIP. ` : ''}
+  Heights ${W.d3Offset ? 'were stored relative to the bottom of the world' : 'were stored as absolute values'}.</p>
+  <h3>Plan file</h3>
+  <p class="small" style="margin:0 0 6px">A small file holding every choice you’ve made, without the worlds. Keep it as a backup, or open it on another device.</p>
+  <div class="exbtns"><button id="savePlanW">Save plan file</button><button id="openPlanW">Open plan file</button></div>
+  <h3>About</h3>
+  <div class="about">
+    <p>World Museum was designed by Greg O’Beirne.</p>
+    <p>Worlds are read and written entirely in your browser; nothing is uploaded. Typefaces: Bricolage Grotesque and Atkinson Hyperlegible, both under the SIL Open Font License, served by Google Fonts.</p>
+    <p>NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT. Minecraft is a trademark of Mojang Synergies AB.</p>
+  </div>`;
+  $('#addMore2').onclick = () => $('#zipInput').click();
+  $('#savePlanW').onclick = savePlanFile; $('#openPlanW').onclick = () => $('#planInput').click();
+  $('#useBackdrop').onchange = ev => { state.mset.backdrop = ev.target.checked ? worldId(W) : null; saveArrange(); renderExhibits(); toast(ev.target.checked ? `“${W.name}” is the backdrop. Its kept areas are ignored, since the whole world is carried over as the base.` : 'No backdrop.', 3500); };
+  $('#showPins').onchange = ev => { state.settings.showPins = ev.target.checked; saveSettings(); hidePop(); renderWorldPane(); draw(); };
+  $('#showSigns').onchange = ev => { state.settings.showSigns = ev.target.checked; saveSettings(); applySigns(); renderWorldPane(); draw(); };
+  $('#pane-world').querySelectorAll('input[data-k]').forEach(cb => cb.onchange = () => { state.show[cb.dataset.k] = cb.checked; draw(); });
+}
+
+// ---------- map drawing
+const cv = $('#map'); const ctx = cv.getContext('2d');
+let dpr = 1;
+function mapRect() { return { w: cv.clientWidth, h: cv.clientHeight }; }
+function resize() { dpr = Math.min(window.devicePixelRatio || 1, 2); cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; draw(); }
+window.addEventListener('resize', resize);
+const toScreen = (x, z) => { const r = mapRect(); return [(x - state.view.x) * state.view.s + r.w / 2, (z - state.view.z) * state.view.s + r.h / 2]; };
+const toWorld = (sx, sy) => { const r = mapRect(); return [(sx - r.w / 2) / state.view.s + state.view.x, (sy - r.h / 2) / state.view.s + state.view.z]; };
+
+function tile(W, d, rx, rz) {
+  const key = d + '|' + rx + '|' + rz;
+  let t = W.tiles.get(key);
+  if (t) { W.tiles.delete(key); W.tiles.set(key, t); return t; }
+  const list = W.regions[d].get(rx + ',' + rz); if (!list) return null;
+  const c = document.createElement('canvas'); c.width = c.height = 512;
+  const g = c.getContext('2d'); const img = g.createImageData(512, 512);
+  const D = W.dims[d]; const sea = d === 0 ? 62 : 0;
+  for (const ch of list) C.chunkPixels(ch, D, img.data, (ch.x & 31) * 16, (ch.z & 31) * 16, 512, sea);
+  g.putImageData(img, 0, 0);
+  W.tiles.set(key, c);
+  if (W.tiles.size > 48) W.tiles.delete(W.tiles.keys().next().value);
+  return c;
+}
+function overview(W, d) {
+  if (W.overview[d]) return W.overview[d];
+  const D = W.dims[d]; const cw = D.maxX - D.minX + 1, chh = D.maxZ - D.minZ + 1;
+  const f = Math.max(1, Math.ceil(Math.max(cw, chh) / 2048));
+  const c = document.createElement('canvas'); c.width = Math.ceil(cw / f); c.height = Math.ceil(chh / f);
+  const g = c.getContext('2d'); const img = g.createImageData(c.width, c.height);
+  const buf = new Uint8ClampedArray(16 * 16 * 4); const sea = d === 0 ? 62 : 0;
+  for (const ch of D.chunks) {
+    C.chunkPixels(ch, D, buf, 0, 0, 16, sea);
+    let r = 0, gg = 0, b = 0; for (let i = 0; i < 1024; i += 4) { r += buf[i]; gg += buf[i + 1]; b += buf[i + 2]; }
+    const o = ((Math.floor((ch.z - D.minZ) / f)) * c.width + Math.floor((ch.x - D.minX) / f)) * 4;
+    img.data[o] = r / 256; img.data[o + 1] = gg / 256; img.data[o + 2] = b / 256; img.data[o + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  return (W.overview[d] = { c, f });
+}
+function heatmap(W, d) {
+  if (W.heat[d]) return W.heat[d];
+  const D = W.dims[d]; const cw = D.maxX - D.minX + 1, chh = D.maxZ - D.minZ + 1;
+  const f = Math.max(1, Math.ceil(Math.max(cw, chh) / 2048));
+  const c = document.createElement('canvas'); c.width = Math.ceil(cw / f); c.height = Math.ceil(chh / f);
+  const g = c.getContext('2d'); const img = g.createImageData(c.width, c.height);
+  const hc = css('--heat'); const rgb = [1, 3, 5].map(i => parseInt(hc.slice(i, i + 2), 16));
+  for (const ch of D.chunks) {
+    if (!ch.build) continue;
+    const o = ((Math.floor((ch.z - D.minZ) / f)) * c.width + Math.floor((ch.x - D.minX) / f)) * 4;
+    const a = Math.min(235, 70 + ch.build * 16);
+    if (a > img.data[o + 3]) { img.data[o] = rgb[0]; img.data[o + 1] = rgb[1]; img.data[o + 2] = rgb[2]; img.data[o + 3] = a; }
+  }
+  g.putImageData(img, 0, 0);
+  return (W.heat[d] = { c, f });
+}
+let raf = 0;
+function draw() { if (!raf) raf = requestAnimationFrame(paint); }
+function paint() {
+  raf = 0;
+  if (state.museum) return paintMuseum();
+  const W = state.worlds[state.w]; if (!W) return;
+  const D = W.dims[state.dim]; if (!D) return;
+  const r = mapRect(); const s = state.view.s; const d = state.dim;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = css('--void'); ctx.fillRect(0, 0, r.w, r.h);
+  ctx.imageSmoothingEnabled = s < 1;
+  if (s < 0.35) {
+    const o = overview(W, d); const [sx, sy] = toScreen(D.minX * 16, D.minZ * 16);
+    ctx.drawImage(o.c, sx, sy, o.c.width * 16 * o.f * s, o.c.height * 16 * o.f * s);
+  } else {
+    const [x0, z0] = toWorld(0, 0), [x1, z1] = toWorld(r.w, r.h);
+    let built = 0; let pending = false;
+    for (let rx = Math.floor(x0 / 512); rx <= Math.floor(x1 / 512); rx++) for (let rz = Math.floor(z0 / 512); rz <= Math.floor(z1 / 512); rz++) {
+      const key = d + '|' + rx + '|' + rz;
+      if (!W.tiles.has(key) && W.regions[d].has(rx + ',' + rz)) { if (built > 5) { pending = true; continue; } built++; }
+      const t = tile(W, d, rx, rz); if (!t) continue;
+      const [sx, sy] = toScreen(rx * 512, rz * 512);
+      ctx.drawImage(t, sx, sy, 512 * s + 0.5, 512 * s + 0.5);
+    }
+    if (pending) draw();
+  }
+  if (state.show.heat) {
+    const hm = heatmap(W, d); const [hx, hy] = toScreen(D.minX * 16, D.minZ * 16);
+    ctx.imageSmoothingEnabled = false; ctx.globalAlpha = s < 0.35 ? 0.95 : 0.7;
+    ctx.drawImage(hm.c, hx, hy, hm.c.width * 16 * hm.f * s, hm.c.height * 16 * hm.f * s);
+    ctx.globalAlpha = 1;
+  }
+  drawExhibits(W, d, r);
+  // markers
+  if (s >= 0.5) {
+    const rad = Math.max(3, Math.min(7, s * 2.5));
+    for (const m of W.markers) {
+      if (m.dim !== d || !state.show[m.kind] || (m.kind === 'sign' && !showSigns())) continue;
+      const [sx, sy] = toScreen(m.x + (m.kind === 'mob' ? 0 : 0.5), m.z + (m.kind === 'mob' ? 0 : 0.5));
+      if (sx < -10 || sy < -10 || sx > r.w + 10 || sy > r.h + 10) continue;
+      ctx.beginPath(); ctx.arc(sx, sy, rad, 0, Math.PI * 2);
+      const col = css(KIND[m.kind][1]);
+      if (m.under) { ctx.lineWidth = 2.5; ctx.strokeStyle = col; ctx.stroke(); }
+      else { ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.stroke(); }
+    }
+  }
+  // player
+  if (W.player && W.player.dim === d) {
+    const [sx, sy] = toScreen(W.player.x, W.player.z);
+    ctx.beginPath(); ctx.moveTo(sx, sy - 9); ctx.lineTo(sx + 7, sy + 6); ctx.lineTo(sx - 7, sy + 6); ctx.closePath();
+    ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#111'; ctx.stroke();
+  }
+  // places: oak sign pins (off unless switched on in the World tab)
+  const places = showPins() ? (W.places[d] || []) : [];
+  const oak = css('--oak'), deep = css('--oak-deep');
+  ctx.font = '700 14px ' + css('--display');
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.globalAlpha = s >= 1.5 && !state.mode ? 0.6 : 1;
+  for (let i = places.length - 1; i >= 0; i--) {
+    const p = places[i]; const [sx, sy] = toScreen(p.cx, p.cz);
+    if (sx < -40 || sy < -40 || sx > r.w + 40 || sy > r.h + 40) continue;
+    if (s >= 0.35) {
+      const [ax, ay] = toScreen(p.minX * 16, p.minZ * 16), [bx, by] = toScreen(p.maxX * 16 + 16, p.maxZ * 16 + 16);
+      ctx.setLineDash([6, 4]); ctx.lineWidth = i === state.selPlace ? 2.5 : 1.5; ctx.strokeStyle = oak; ctx.strokeRect(ax, ay, bx - ax, by - ay); ctx.setLineDash([]);
+    }
+    const w = p.rank > 9 ? 34 : 28, h = 24, top = sy - h - 10;
+    ctx.fillStyle = deep; ctx.fillRect(sx - 2, top + h, 4, 10);
+    ctx.fillStyle = oak; roundRect(sx - w / 2, top, w, h, 4); ctx.fill();
+    if (i === state.selPlace) { ctx.lineWidth = 3; ctx.strokeStyle = css('--ink'); ctx.stroke(); }
+    ctx.fillStyle = '#fff8ea'; ctx.fillText(String(p.rank), sx, top + h / 2 + 1);
+  }
+  ctx.globalAlpha = 1;
+}
+function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
+let anim = 0;
+function flyTo(x, z, s) {
+  cancelAnimationFrame(anim);
+  const off = panelOffset();
+  const tx = x + off.x / s, tz = z + off.z / s;
+  const a = { ...state.view }; const t0 = performance.now(); const dur = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 450;
+  const step = now => {
+    const k = dur ? Math.min(1, (now - t0) / dur) : 1; const e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+    state.view.s = Math.exp(Math.log(a.s) + (Math.log(s) - Math.log(a.s)) * e);
+    state.view.x = a.x + (tx - a.x) * e; state.view.z = a.z + (tz - a.z) * e;
+    paint(); if (k < 1) anim = requestAnimationFrame(step);
+  };
+  anim = requestAnimationFrame(step);
+}
+
+// ---------- interaction
+const ptrs = new Map(); let moved = false, pinch = null;
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); moved = false; hidePop();
+  if (ptrs.size === 2) { pinch = pinchInfo(); state.drag = null; if (state.gdrag) { const gd = state.gdrag; gd.g.ox = gd.ox; gd.g.oz = gd.oz; state.gdrag = null; } draw(); }
+  else if (state.museum && state.erase) { const [x, z] = toWorld(e.clientX, e.clientY); const cx = Math.floor(x / 16), cz = Math.floor(z / 16); state.edrag = [cx, cz, cx, cz]; state.dragStart = { x: e.clientX, y: e.clientY }; draw(); }
+  else if (state.museum && !state.placingHub && !state.placingLink) { const g = groupAt(e.clientX, e.clientY); if (g) { state.selGroup = g.id; if (g.pinned) toast('This exhibit is pinned to its original spot to match the seed’s terrain.', 2500); else state.gdrag = { g, sx: e.clientX, sy: e.clientY, ox: g.ox, oz: g.oz }; draw(); } }
+  else if (state.mode) { const [x, z] = toWorld(e.clientX, e.clientY); const cx = Math.floor(x / 16), cz = Math.floor(z / 16); state.drag = [cx, cz, cx, cz]; state.dragStart = { x: e.clientX, y: e.clientY }; draw(); }
+});
+cv.addEventListener('pointermove', e => {
+  readout(e.clientX, e.clientY);
+  const p = ptrs.get(e.pointerId); if (!p) return;
+  if (ptrs.size === 1 && state.edrag) { const [x, z] = toWorld(e.clientX, e.clientY); state.edrag[2] = Math.floor(x / 16); state.edrag[3] = Math.floor(z / 16); moved = true; draw(); return; }
+  if (ptrs.size === 1 && state.gdrag) {
+    const gd = state.gdrag; const dx = Math.round((e.clientX - gd.sx) / state.view.s / 16), dz = Math.round((e.clientY - gd.sy) / state.view.s / 16);
+    if (dx || dz) moved = true;
+    if (gd.g.ox !== gd.ox + dx || gd.g.oz !== gd.oz + dz) { gd.g.ox = gd.ox + dx; gd.g.oz = gd.oz + dz; draw(); }
+    return;
+  }
+  if (ptrs.size === 1 && state.drag) {
+    const [x, z] = toWorld(e.clientX, e.clientY); state.drag[2] = Math.floor(x / 16); state.drag[3] = Math.floor(z / 16); moved = true; draw(); return;
+  }
+  if (ptrs.size === 1) {
+    const dx = e.clientX - p.x, dy = e.clientY - p.y;
+    if (Math.abs(dx) + Math.abs(dy) > 3) moved = true;
+    state.view.x -= dx / state.view.s; state.view.z -= dy / state.view.s; p.x = e.clientX; p.y = e.clientY; draw();
+  } else {
+    p.x = e.clientX; p.y = e.clientY; moved = true;
+    const n = pinchInfo(); if (pinch && n.d > 0) { zoomAt(n.cx, n.cy, n.d / pinch.d); state.view.x -= (n.cx - pinch.cx) / state.view.s; state.view.z -= (n.cy - pinch.cy) / state.view.s; } pinch = n;
+  }
+});
+const endPtr = e => {
+  const was = ptrs.size; ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null;
+  if (state.edrag && was === 1) {
+    const r = state.edrag; state.edrag = null; const st = state.dragStart || { x: e.clientX, y: e.clientY };
+    if (e.type === 'pointerup') { if (Math.hypot(e.clientX - st.x, e.clientY - st.y) < 10) toast('Drag across the exhibits to erase that area.', 2000); else finishErase(r); }
+    draw(); return;
+  }
+  if (state.gdrag && was === 1) {
+    const g = state.gdrag.g; state.gdrag = null;
+    if (moved) { museumSnapshot(); arrange[g.id] = [g.ox - g.minX, g.oz - g.minZ]; checkIssues(); saveArrange(); state.built = null; }
+    renderMuseum(); draw(); return;
+  }
+  if (state.drag && was === 1) {
+    const r = state.drag; state.drag = null; const st = state.dragStart || { x: e.clientX, y: e.clientY };
+    if (e.type === 'pointerup') {
+      if (Math.hypot(e.clientX - st.x, e.clientY - st.y) < 10) toast('Drag to outline an area. A tap on its own doesn’t add anything.', 2200);
+      else finishRect(r);
+    }
+    draw(); return;
+  }
+  if (was === 1 && !moved && e.type === 'pointerup') tap(e.clientX, e.clientY);
+};
+cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
+function pinchInfo() { const [a, b] = [...ptrs.values()]; return { cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) }; }
+cv.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015))); }, { passive: false });
+function zoomAt(sx, sy, k) {
+  const [wx, wz] = toWorld(sx, sy);
+  state.view.s = Math.max(0.01, Math.min(16, state.view.s * k));
+  const [nx, nz] = toWorld(sx, sy); state.view.x += wx - nx; state.view.z += wz - nz; draw();
+}
+function readout(sx, sy) {
+  if (state.museum) { const [x, z] = toWorld(sx, sy); const g = groupAt(sx, sy); $('#readout').textContent = `X ${Math.floor(x)}, Z ${Math.floor(z)}` + (g ? `, ${g.world.name}: ${g.name}` : ', ' + (state.mset.surround === 'seed' ? 'new terrain' : SUR[state.mset.surround][0].toLowerCase())); return; }
+  const W = state.worlds[state.w]; if (!W) return;
+  const [x, z] = toWorld(sx, sy); const bx = Math.floor(x), bz = Math.floor(z);
+  const c = W.dims[state.dim].index.get((bx >> 4) + ',' + (bz >> 4));
+  let t = `X ${bx}, Z ${bz}`;
+  if (c && c.h) { const i = (bz & 15) * 16 + (bx & 15); const b = C.BIOMES[c.b[i]]; if (state.dim === 0) t += `, surface Y ${c.h[i]}`; if (b) t += `, ${b[0]}`; }
+  else if (!c) t += ', never saved';
+  $('#readout').textContent = t;
+}
+function tap(sx, sy) {
+  readout(sx, sy);
+  if (state.museum) { if (state.placingLink) { placeLinkAt(sx, sy); return; } if (state.placingHub) { placeHubAt(sx, sy); return; } const g = groupAt(sx, sy); state.selGroup = g ? g.id : null; draw(); return; }
+  const W = state.worlds[state.w]; const places = W.places[state.dim] || [];
+  for (let i = 0; i < (showPins() ? places.length : 0); i++) { const [px, py] = toScreen(places[i].cx, places[i].cz); if (Math.abs(sx - px) < 18 && sy < py && sy > py - 40) { showPlaceCard(i, px, py - 34); return; } }
+  if (state.view.s >= 0.5) {
+    let best = null, bd = 14;
+    for (const m of W.markers) { if (m.dim !== state.dim || !state.show[m.kind] || (m.kind === 'sign' && !showSigns())) continue; const [mx, my] = toScreen(m.x + 0.5, m.z + 0.5); const dd = Math.hypot(mx - sx, my - sy); if (dd < bd) { bd = dd; best = m; } }
+    if (best) { showPop(best, sx, sy); return; }
+  }
+  const [x, z] = toWorld(sx, sy); const k = Math.floor(x / 16) + ',' + Math.floor(z / 16);
+  const ex = (W.exhibits || []).find(e => e.dim === state.dim && footprint(W, e).all.has(k));
+  if (ex) { state.selEx = ex.id; if (isMobile()) toast(`“${ex.name}” is kept. Adjust it in the Kept tab.`, 2500); else openTab('exhibits'); renderExhibits(); draw(); }
+}
+const ID_NAMES = { Music: 'Note block', EnchantTable: 'Enchanting table', PistonArm: 'Piston', ItemFrame: 'Item frame', GlowItemFrame: 'Glow item frame', BrewingStand: 'Brewing stand', ShulkerBox: 'Shulker box', EnderChest: 'Ender chest', BlastFurnace: 'Blast furnace', CommandBlock: 'Command block', DaylightDetector: 'Daylight sensor', HangingSign: 'Hanging sign', FlowerPot: 'Flower pot', Skull: 'Head', RespawnAnchor: 'Respawn anchor', ChiseledBookshelf: 'Chiseled bookshelf', DecoratedPot: 'Decorated pot' };
+function showPop(m, sx, sy) {
+  const pop = $('#pop');
+  const title = m.kind === 'mob' ? (m.name || 'Tamed ' + m.id.replace(/_/g, ' ')) : (ID_NAMES[m.id] || m.id);
+  const lines = [];
+  if (m.text) lines.push(`“${esc(m.text)}”`);
+  if (m.kind === 'mob') lines.push(esc(m.id.replace(/_/g, ' ')) + (m.tamed ? ', tamed' : ''));
+  if (m.name && m.kind !== 'mob') lines.push('Named ' + esc(m.name));
+  if (m.items) lines.push(`${m.items} stack${m.items > 1 ? 's' : ''} inside`);
+  lines.push(`X ${r0(m.x)}, Y ${r0(m.y)}, Z ${r0(m.z)}${m.under ? ', underground' : ''}`);
+  delete pop.dataset.place;
+  pop.innerHTML = `<div class="t">${esc(title)}</div>${lines.map(l => `<div>${l}</div>`).join('')}`;
+  pop.hidden = false;
+  if (sx === undefined) { const r = mapRect(); [sx, sy] = toScreen(m.x, m.z); if (sx < 0 || sx > r.w) sx = r.w / 2; }
+  const pw = pop.offsetWidth, ph = pop.offsetHeight;
+  pop.style.left = Math.max(8, Math.min(window.innerWidth - pw - 8, sx - pw / 2)) + 'px';
+  pop.style.top = Math.max(8, sy - ph - 16) + 'px';
+}
+function hidePop() { $('#pop').hidden = true; }
+
+/*__STEP2__*/
+/*__STEP3__*/
+if (readSession().worlds.length) { resume = {}; renderResume(); }
+resize();
+})();
+</script>
+</body>
+</html>
